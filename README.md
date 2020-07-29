@@ -16,7 +16,7 @@ The author would like to credit the orignal code developer on whose idea this co
  * Texas Instruments Inc. 
  * Dec 2010
  * Built with IAR Version:4.2 and CCS v4.2
- More information on Ti's MSP430 application can be founbd at https://www.ti.com/lit/an/slaa503/slaa503.pdf?ts=1596031062777&ref_url=https%253A%252F%252Fwww.google.com%252F & 
+ More information on Ti's MSP430 application can be found at https://www.ti.com/lit/an/slaa503/slaa503.pdf?ts=1596031062777&ref_url=https%253A%252F%252Fwww.google.com%252F & 
  http://www.ti.com/lit/zip/slaa503.
 
 
