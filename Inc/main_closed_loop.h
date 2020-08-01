@@ -63,7 +63,7 @@
 // Motor Speed Control - Close Loop Definitions
 //****************************************************************************//
 
-#define TIMER_COUNTER_FREQ 4000          // in kHz ---- not required here???? CHECK
+#define TIMER_COUNTER_FREQ 240          // in kHz ---- not required here???? CHECK
 
 #define NUM_MOTOR_POLES   8             // # of motor poles
 #define MAX_MECH_SPEED_IN_RPM  3000     // Max Motor Speed in rpm

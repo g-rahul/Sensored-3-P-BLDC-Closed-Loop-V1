@@ -10,7 +10,7 @@
       <TargetName>Motor_Controller_Firmaware_572020</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060750::V5.06 update 6 (build 750)::ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;                ../Drivers/STM32F1xx_HAL_Driver/Inc;                ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;                ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;                       ../Drivers/STM32F1xx_HAL_Driver/Inc;                       ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;                       ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;                       ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -393,6 +393,11 @@
         <Group>
           <GroupName>Application/User</GroupName>
           <Files>
+            <File>
+              <FileName>MC_Read_me.txt</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\MC_Read_me.txt</FilePath>
+            </File>
             <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>

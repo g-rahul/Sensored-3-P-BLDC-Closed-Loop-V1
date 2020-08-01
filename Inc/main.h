@@ -62,6 +62,23 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define KP 500
 #define KI 500
+#define LU_Pin GPIO_PIN_1
+#define LU_GPIO_Port GPIOA
+#define LV_Pin GPIO_PIN_2
+#define LV_GPIO_Port GPIOA
+#define LW_Pin GPIO_PIN_3
+#define LW_GPIO_Port GPIOA
+#define OC_SD_Pin GPIO_PIN_4
+#define OC_SD_GPIO_Port GPIOA
+#define OC_SD_EXTI_IRQn EXTI4_IRQn
+#define LS_Pin GPIO_PIN_8
+#define LS_GPIO_Port GPIOA
+#define HU_Pin GPIO_PIN_9
+#define HU_GPIO_Port GPIOA
+#define HV_Pin GPIO_PIN_10
+#define HV_GPIO_Port GPIOA
+#define HW_Pin GPIO_PIN_11
+#define HW_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

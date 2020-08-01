@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/rahul/Documents/Cube_STM/Private/Motor_Controller_Firmaware_572020/Inc
+HeaderPath=C:/Users/rahul/Documents/Integrated Projects/Motor Control Trapezoidal/Motor_Controller_Firmaware_572020/Inc
 HeaderFiles=stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;
-SourcePath=C:/Users/rahul/Documents/Cube_STM/Private/Motor_Controller_Firmaware_572020/Src
+SourcePath=C:/Users/rahul/Documents/Integrated Projects/Motor Control Trapezoidal/Motor_Controller_Firmaware_572020/Src
 SourceFiles=stm32f1xx_it.c;stm32f1xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

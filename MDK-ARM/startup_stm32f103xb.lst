@@ -464,11 +464,12 @@ ARM Macro Assembler    Page 8
 Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M3 --apcs=interw
 ork --depend=motor_controller_firmaware_572020\startup_stm32f103xb.d -omotor_co
 ntroller_firmaware_572020\startup_stm32f103xb.o -I.\RTE\_Motor_Controller_Firma
-ware_572020 -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\Core\Include -IC:\Keil_
-v5\ARM\PACK\Keil\STM32F1xx_DFP\2.3.0\Device\Include --predefine="__EVAL SETA 1"
- --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VERSION SETA 526" --pre
-define="_RTE_ SETA 1" --predefine="STM32F10X_MD SETA 1" --list=startup_stm32f10
-3xb.lst startup_stm32f103xb.s
+ware_572020 -IC:\Users\rahul\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core
+\Include -IC:\Users\rahul\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Devi
+ce\Include --predefine="__EVAL SETA 1" --predefine="__MICROLIB SETA 1" --predef
+ine="__UVISION_VERSION SETA 531" --predefine="_RTE_ SETA 1" --predefine="STM32F
+10X_MD SETA 1" --predefine="_RTE_ SETA 1" --list=startup_stm32f103xb.lst startu
+p_stm32f103xb.s
 
 
 

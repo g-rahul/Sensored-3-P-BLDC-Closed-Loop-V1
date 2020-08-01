@@ -29,9 +29,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-extern TIM_HandleTypeDef htim3;
-extern ADC_HandleTypeDef hadc1;
-extern TIM_HandleTypeDef htim1;
+
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
@@ -46,7 +44,8 @@ extern TIM_HandleTypeDef htim1;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+volatile   uint32_t tick;
+volatile   uint32_t Current_PWM;
 
 /* USER CODE END PV */
 
@@ -64,6 +63,12 @@ extern void PWM_update (unsigned char Next_Hall_Sequence);
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 /* USER CODE BEGIN EV */
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
+//extern ADC_HandleTypeDef hadc1;
+//extern TIM_HandleTypeDef htim1;
+
+extern uint32_t  LS , HU , HV , HW ;
 extern unsigned int Expected_COMM_PWM_Counts, Measured_COMM_PWM_Counts;
 extern unsigned char PreDriver_Sequence, Hall_IN, Motor_Status, Hall_State_Unknown;
 extern unsigned char Hall_DIR_sequence[];
@@ -207,6 +212,71 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line4 interrupt.
+  */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
+
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+	
+	/*Get Current PWM Value is it required ???  */
+	  Current_PWM = htim1.Instance->CCR1;
+	
+	/* Shut Down Pwm Outputs */
+  HAL_TIM_PWM_Stop(&htim1,HU);
+	HAL_TIM_PWM_Stop(&htim1,HV);
+	HAL_TIM_PWM_Stop(&htim1,HW);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_2,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
+	  
+	
+	/* Start Over Current Timer2 */
+	  HAL_TIM_Base_Start(&htim2);
+	
+	/* Check if OC fault still exist */
+	    while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_4))
+		{ 
+		tick = __HAL_TIM_GET_COUNTER(&htim2);	
+		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+		
+	/* Check if OC Condition is present for more than 2uS stop motor */
+		if(tick>30)
+		{
+			while(1)
+			{
+			HAL_TIM_PWM_Stop(&htim1,LS);
+      HAL_TIM_PWM_Stop(&htim1,HU);
+	    HAL_TIM_PWM_Stop(&htim1,HV);
+	    HAL_TIM_PWM_Stop(&htim1,HW);
+	    HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_RESET);
+	    HAL_GPIO_WritePin(GPIOA,GPIO_PIN_2,GPIO_PIN_RESET);
+	    HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_14,GPIO_PIN_RESET);	
+			}
+		}
+		}
+		
+  /*Stop Over Current Timer2 and Reset Counter  */
+		HAL_TIM_Base_Stop(&htim2);
+		__HAL_TIM_SET_COUNTER(&htim2,0);
+		
+	/*Wait till PWM Timer Update event if not set*/
+		while(~(__HAL_TIM_GET_FLAG(&htim2,TIM_FLAG_UPDATE)))
+		{}
+			
+	/*Re Commutate to upadate PWM values back*/	
+		Hall_IN = ((GPIOB->IDR)&0xF000)>>13;
+		PreDriver_Sequence = Hall_DIR_sequence[Hall_IN]; 
+ 	  PWM_update(PreDriver_Sequence);
+			
+  /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
   * @brief This function handles ADC1 and ADC2 global interrupts.
   */
 void ADC1_2_IRQHandler(void)
@@ -247,6 +317,16 @@ void EXTI15_10_IRQHandler(void)
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_15);
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
+	
+	//Reset all outputs
+	HAL_TIM_PWM_Stop(&htim1,HU);
+	HAL_TIM_PWM_Stop(&htim1,HV);
+	HAL_TIM_PWM_Stop(&htim1,HW);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_2,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
+	//
+	
 	HAL_TIM_Base_Stop(&htim3);                                     //stop counter
 	
   Measured_COMM_PWM_Counts = (Measured_COMM_PWM_Counts + __HAL_TIM_GET_COUNTER(&htim3))>>1;       

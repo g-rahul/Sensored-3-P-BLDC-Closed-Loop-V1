@@ -46,6 +46,7 @@
 ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
@@ -107,6 +108,7 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 void PWM_update (unsigned char Next_Hall_Sequence);
@@ -124,10 +126,8 @@ void Start_Motor(void)
 {
     // Read Speed Input and update dutycycle variable
 #ifdef ANALOG_SPEEDIN
+	
     Start_ADC_Conversion();  
-    
-   
-    
     Avg_vBUS = ADC_Results[0] >>3;
     Avg_vPOT = ADC_Results[1] >>3;  
     Desired_PWM_DutyCycle = Avg_vPOT >> 3;    // ADC12 => 4096 ADC counts = 100% speed
@@ -155,10 +155,16 @@ void Start_Motor(void)
                                               // Expected PWM counts based on max speed and speed input         
       
     // Read Hall inputs
-    Hall_IN = 0;
-    Hall_IN = ((Hall_IN & 0x0E)>>1);
+    //Hall_IN = 0;
+    Hall_IN = ((GPIOB->IDR)&0xF000)>>13;;
 
-    // Start PWM TimerB
+    // Start PWM Timer 1 in Interrupt Mode
+		HAL_TIM_Base_Start_IT(&htim1);
+		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+		
+		// Start Timer 3 - Speed Capture
+		HAL_TIM_Base_Start(&htim3);
+		
     PreDriver_Sequence = Hall_DIR_sequence[Hall_IN];
     PWM_update(PreDriver_Sequence);
     
@@ -252,12 +258,11 @@ void PWM_update (unsigned char Next_Hall_Sequence)
         break;
         
       default:
-        Hall_State_Unknown = true;
-        Stop_Motor();
+        //Hall_State_Unknown = true;
+        //Stop_Motor();
         break;
       }
-  //TBR = TIMER_PWM_PERIOD-1;
-  //TBCCR0 = TIMER_PWM_PERIOD-1;
+
   Hall_State_Unknown = false;
 }    
 
@@ -295,7 +300,24 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
+	/*Safety Lock Gate OutPuts*/
+	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_14,GPIO_PIN_RESET);
+	HAL_TIM_PWM_Stop(&htim1,LS);
+  HAL_TIM_PWM_Stop(&htim1,HU);
+	HAL_TIM_PWM_Stop(&htim1,HV);
+	HAL_TIM_PWM_Stop(&htim1,HW);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_1,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_2,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
+	
+	
+	// Initialize PWM outputs with Min Dutycycle Value
+   htim1.Instance->CCR1 = MIN_PWM_DUTYCYCLE;
+   htim1.Instance->CCR2 = MIN_PWM_DUTYCYCLE;
+   htim1.Instance->CCR3 = MIN_PWM_DUTYCYCLE;
+	 htim1.Instance->CCR4 = MIN_PWM_DUTYCYCLE;
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -310,25 +332,54 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start_IT(&htim1);
-	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
-	htim1.Instance->CCR1 = 2010;
 	
 		if(HAL_OK != HAL_ADCEx_Calibration_Start(&hadc1))
 		Error_Handler();
 		
-     htim1.Instance->ARR= 4095;
-		 counter=htim1.Instance->CNT; 
-	
+  /*Initialzie Timer 1 frequency*/
+		htim1.Instance->ARR= 4095;
+		 
+	/*
+  // Check with Vbus is good to proceed with motor start
+  if (Avg_vBUS < 0xFF)
+  {
+      // Wait until vBUS increases 3.3V?
+    
+  }
+  */
+  // Init Variables
+  ExecutePID = false;                       
+  PID_Execute_Counter = 0x0;
+  Measured_COMM_PWM_Counts = 0x0;
+  Expected_COMM_PWM_Counts = 0x0;
+  
+  s16_Proportional_Error = 0x0;
+  s16_Integral_Error = 0x0;
+  s16_PID_ControlLoop_Output = 0x0;
+  
+  Motor_Status = Stopped;  
+  Hall_State_Unknown = true;
+  SampleADC = false; 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	
+	/*Safety Lock Open if system elapsed time is greater than 3 seconds*/
+	  while(HAL_GetTick()<3000)
+		{}
+		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_14,GPIO_PIN_SET);	
+			
+	/*Start Motor*/	
+		if ((Motor_Status == Stopped)&&(Hall_State_Unknown == true))
+    Start_Motor();
+		
   while (1)
   {
 		  
-		   counter = __HAL_TIM_GET_COUNTER(&htim1);
+		   //counter = __HAL_TIM_GET_COUNTER(&htim1);
 	     
 		if(SampleADC == true)
       {
@@ -399,9 +450,11 @@ int main(void)
           }
           
           // Initialize PWM outputs with initial dutycycle counts
-            
-          
-          ExecutePID = false;
+					  htim1.Instance->CCR1 = PID_Applied_PWM_DutyCycle;
+            htim1.Instance->CCR2 = PID_Applied_PWM_DutyCycle;
+					  htim1.Instance->CCR3 = PID_Applied_PWM_DutyCycle;
+            htim1.Instance->CCR4 = PID_Applied_PWM_DutyCycle;              
+            ExecutePID = false;
       }
     /* USER CODE END WHILE */
 
@@ -602,6 +655,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 72;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 65535;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -620,9 +718,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 10;
+  htim3.Init.Prescaler = 299;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1800;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -665,7 +763,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LU_Pin|LV_Pin|LW_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC13 PC14 PC15 */
   GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
@@ -674,12 +772,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA2 PA3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3;
+  /*Configure GPIO pins : LU_Pin LV_Pin LW_Pin */
+  GPIO_InitStruct.Pin = LU_Pin|LV_Pin|LW_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : OC_SD_Pin */
+  GPIO_InitStruct.Pin = OC_SD_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(OC_SD_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB12 PB13 PB14 PB15 */
   GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
@@ -688,6 +792,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
