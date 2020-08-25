@@ -42,12 +42,18 @@
 ********************************************************************************/
 
 // Hall Commuttaion States mapped to respective TimerB PWM Outputs
-#define LS_U 	0x01     	//A1
+/*#define LS_U 	0x01     	//A1
 #define HS_U 	0x02     	//A9
 #define LS_V 	0x04     	//A2
 #define HS_V 	0x08     	//A10
 #define LS_W 	0x10     	//A3
-#define HS_W 	0x20     	//A11
+#define HS_W 	0x20     	//A11*/
+#define HS_V_LS_W 0x01       // Hall position 001
+#define HS_U_LS_V 0x02      // Hall position 010
+#define HS_U_LS_W 0x03      // Hall position 011
+#define HS_W_LS_U 0x04      // Hall position 100
+#define HS_V_LS_U 0x05     // Hall position 101
+#define HS_W_LS_V 0x06     // Hall position 110
 
 // Motor Direction Defintions
 #define CW 	0x01		// clockwise direction 

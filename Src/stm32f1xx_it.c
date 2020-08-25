@@ -52,7 +52,7 @@ extern TIM_HandleTypeDef htim1;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-extern void PWM_update (unsigned char Next_Hall_Sequence);
+extern void PWM_update (uint16_t Hall_IN );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -64,13 +64,14 @@ extern void PWM_update (unsigned char Next_Hall_Sequence);
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 /* USER CODE BEGIN EV */
+unsigned int frequency;
 extern unsigned int Expected_COMM_PWM_Counts, Measured_COMM_PWM_Counts;
 extern unsigned char PreDriver_Sequence, Hall_IN, Motor_Status, Hall_State_Unknown;
 extern unsigned char Hall_DIR_sequence[];
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M3 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M3 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles Non maskable interrupt.
@@ -250,14 +251,15 @@ void EXTI15_10_IRQHandler(void)
 	HAL_TIM_Base_Stop(&htim3);                                     //stop counter
 	
   Measured_COMM_PWM_Counts = (Measured_COMM_PWM_Counts + __HAL_TIM_GET_COUNTER(&htim3))>>1;       
-                                                                // Accumulate and avg measured PWM counts per commutation cycle with prev value
+  frequency = (2000000/Measured_COMM_PWM_Counts) ;                                                              // Accumulate and avg measured PWM counts per commutation cycle with prev value
 	__HAL_TIM_SET_COUNTER(&htim3,0);                              //clear counter
 	HAL_TIM_Base_Start(&htim3);                                   //restart counter
 	
+
 // Read Hall inputs
 		    Hall_IN = ((GPIOB->IDR)&0xF000)>>13;
 		    PreDriver_Sequence = Hall_DIR_sequence[Hall_IN]; 
- 	      PWM_update(PreDriver_Sequence);
+ 	      PWM_update(Hall_IN);
   /* USER CODE END EXTI15_10_IRQn 1 */
 }
 

@@ -47,14 +47,14 @@
 
 #define SYSTEM_FREQ 72000               // (in kHz) System Freq, Timer PWM Time Base
 #define PWM_FREQ 17578                  // (in Hz) PWM Freq for switching the H-Bridge FETs 
-#define TIMER_PWM_PERIOD  4095
+#define TIMER_PWM_PERIOD  4096
                                         // Timer PWM Counts = Sytem Freq/(2xPWM Freq)
 
 #define SPEEDIN_PWM_FACTOR  1           // Calculate this value and define the constant 
                                         // = 4096/TIMER_PWM_PERIOD, rounded off to the closest whole digit
 
 #define DUTYCYCLE_MIN 10                 // (in %age) Min Dutycycle percentage - latching percentage used initially
-#define MIN_PWM_DUTYCYCLE ((unsigned long)(TIMER_PWM_PERIOD)*(unsigned int)(DUTYCYCLE_MIN))/100
+#define MIN_PWM_DUTYCYCLE 410
                                         // Min PWM Dutycycle; also used for configuring initial dutycycle 
 
 #define ADC_SAMPLING_PWM_PERIODS 2000   // Every #PWM periods when ADC is sampled
@@ -96,8 +96,8 @@
 #define StartUp 0x01
 #define Running 0x02
 
-#define DIRECTION_CCW 
-// #define DIRECTION_CW
+//#define DIRECTION_CCW 
+#define DIRECTION_CW
 
 #define true 0x01
 #define false 0x0

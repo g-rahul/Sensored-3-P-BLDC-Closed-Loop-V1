@@ -17,7 +17,6 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
@@ -49,6 +48,17 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
+#ifdef DIRECTION_CW
+  // Direction = 0x00 
+uint16_t Hall_DIR_sequence[] = {  0x00,          
+                                      1,       // Hall position 001
+                                      2,       // Hall position 010
+                                      3,       // Hall position 011
+                                      4,       // Hall position 100
+                                      5,       // Hall position 101
+                                      6,       // Hall position 110
+                                        0x00   };
+#endif
 
 #ifdef DIRECTION_CCW                                        
   // Direction = 0x01 
@@ -62,23 +72,14 @@ uint16_t Hall_DIR_sequence[] = { 0x00,
                                         0x00   };
 #endif
 
-#ifdef DIRECTION_CW
-  // Direction = 0x00 
-uint16_t Hall_DIR_sequence[] = {  0x00,          
-                                      HS_V|LS_W,       // Hall position 001
-                                      HS_U|LS_V,       // Hall position 010
-                                      HS_U|LS_W,       // Hall position 011
-                                      HS_W|LS_U,       // Hall position 100
-                                      HS_V|LS_U,       // Hall position 101
-                                      HS_W|LS_V,       // Hall position 110
-                                        0x00   };
-#endif
+
 
 
 // Motor and Commutation Variables
 unsigned int Desired_PWM_DutyCycle, PWM_Update_Counter, ADC_Sample_Counter;
-uint16_t PreDriver_Sequence, Hall_IN, Motor_Status, Hall_State_Unknown;
+unsigned char Hall_IN=0,PreDriver_Sequence,Motor_Status, Hall_State_Unknown;
 unsigned char Motor_status;
+
 uint32_t  counter=0;
 unsigned char  error = false;
 
@@ -94,6 +95,7 @@ unsigned int Expected_Hall_ISRs_1sec;
 unsigned int Expected_COMM_PWM_Counts, Measured_COMM_PWM_Counts, JJ[100],j=0;
 unsigned int Kp, Ki;
 signed int s16_Proportional_Error, s16_Integral_Error, s16_PID_ControlLoop_Output;
+unsigned int PID_Applied_PWM_DutyCycle;
 
 //PWM Channel Variables
  uint32_t LW = GPIO_PIN_3 , LS = TIM_CHANNEL_1, HU = TIM_CHANNEL_2 , HV = TIM_CHANNEL_3 , HW = TIM_CHANNEL_4 , LU = GPIO_PIN_1 , LV = GPIO_PIN_2  ;
@@ -161,9 +163,6 @@ void Start_Motor(void)
     // Start PWM Timer1
     PreDriver_Sequence = Hall_DIR_sequence[Hall_IN];
     PWM_update(PreDriver_Sequence);
-    if(HAL_OK != HAL_TIM_Base_Start_IT(&htim1))
-			Error_Handler();
-		
     Motor_Status = Running;
 }
 
@@ -173,93 +172,59 @@ void Stop_Motor(void)
     Motor_Status = Stopped;	
 }
 //************************************************************************************************************************//
-void PWM_update (unsigned char Next_Hall_Sequence)
+void PWM_update (unsigned char Hall_IN)
 {
   //Hall_U=> PB.15; Hall_V=> PB.14; Hall_W=> PB.13
-   
-      switch(Next_Hall_Sequence)
+	  HAL_TIM_PWM_Stop(&htim1,HU);
+		HAL_TIM_PWM_Stop(&htim1,HV);
+		HAL_TIM_PWM_Stop(&htim1,HW);
+	  HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_RESET);
+	
+      switch(Hall_IN)
       {
-      case HS_W|LS_V:            // Hall_IN DIR1_001 DIR0_110
-        // Next edge => HS3 rising, HS2 rising, HS1 falling DIR1
-        // Next edge => HS3 falling, HS2 falling, HS1 rising DIR0  
-        #ifdef DIRECTION_CCW
-                    // DIR1
-        #else
-           P1IES = BIT2+BIT3;    // DIR0
-        #endif
+      case 1:             
         HAL_TIM_PWM_Start(&htim1,HW);
-		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET);
+		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);
          
         break;
         
-      case HS_V|LS_U:           // Hall_IN DIR1_010 DIR0_101
-        // Next edge => HS3 rising, HS2 falling, HS1 rising DIR1
-        // Next edge => HS3 falling, HS2 rising, HS1 falling DIR0
-        #ifdef DIRECTION_CCW
-                 // DIR1
-        #else
-           P1IES = BIT1+BIT3;   // DIR0
-        #endif
+      case 2:          
         HAL_TIM_PWM_Start(&htim1,HV);
-		    HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_SET); 
+		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET); 
             
         break;
     
-      case HS_W|LS_U:            // Hall_IN DIR1_011 DIR0_100
-        // Next edge => HS3 rising, HS2 falling, HS1 falling DIR1
-        // Next edge => HS3 falling, HS2 rising, HS1 rising DIR0 
-        #ifdef DIRECTION_CCW
-              // DIR1
-        #else
-           P1IES = BIT3;         // DIR0
-        #endif
+      case 3:            
         HAL_TIM_PWM_Start(&htim1,HW);
+		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);
+        break;
+    
+      case 4:            
+        HAL_TIM_PWM_Start(&htim1,HU);
+		    HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_SET);      
+        break;
+    
+      case 5:            
+        HAL_TIM_PWM_Start(&htim1,HU);
 		    HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_SET);
         break;
     
-      case HS_U|LS_W:            // Hall_IN CCW_100 CW_011
-        // Next edge => HS3 falling, HS2 rising, HS1 rising DIR1
-        // Next edge => HS3 rising, HS2 falling, HS1 falling DIR0
-        #ifdef DIRECTION_CCW
-                // DIR1
-        #else
-           P1IES = BIT1+BIT2;    // DIR0
-        #endif        
-        HAL_TIM_PWM_Start(&htim1,HU);
-		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);      
-        break;
-    
-      case HS_U|LS_V:            // Hall_IN CCW_101 CW_010
-        // Next edge => HS3 falling, HS2 rising, HS1 falling DIR1
-        // Next edge => HS3 rising, HS2 falling, HS1 rising DIR0
-        #ifdef DIRECTION_CCW
-            // DIR1
-        #else
-           P1IES = BIT2;         // DIR0
-        #endif        
-        HAL_TIM_PWM_Start(&htim1,HU);
-		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET);
-        break;
-    
-      case HS_V|LS_W:            // Hall_IN CCW_110 CW_001
-        // Next edge => HS3 falling, HS2 falling, HS1 rising DIR1
-        // Next edge => HS3 rising, HS2 rising, HS1 falling DIR0
-        #ifdef DIRECTION_CCW
-              // DIR1
-        #else
-           P1IES = BIT1;         // DIR0
-        #endif        
+      case 6:            
         HAL_TIM_PWM_Start(&htim1,HV);
-		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);
+		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET);
         break;
         
       default:
-        Hall_State_Unknown = true;
-        Stop_Motor();
+					HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_RESET);
+          Hall_State_Unknown = true;
+        //Stop_Motor();
         break;
       }
-  //TBR = TIMER_PWM_PERIOD-1;
-  //TBCCR0 = TIMER_PWM_PERIOD-1;
+
   Hall_State_Unknown = false;
 }    
 
@@ -287,7 +252,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	volatile unsigned int i;
-  unsigned int PID_Applied_PWM_DutyCycle;
+  
 
   /* USER CODE END 1 */
 
@@ -335,16 +300,24 @@ int main(void)
 		
 	/* Initialize Timer Peripherals */
 	htim1.Instance->ARR= 4095;
-	counter=htim1.Instance->CNT; 
+	 
 	
 	while(HAL_GetTick()<4000)
 	{
 		;
 	}
+	/* Start Low Side PWM*/
+	HAL_TIM_PWM_Start(&htim1,LS);
+	
 	/* Start Motor */
   if ((Motor_Status == Stopped)&&(Hall_State_Unknown == true))
 	{Start_Motor();}
 	
+	/* Start Timer  */
+	if(HAL_OK != HAL_TIM_Base_Start_IT(&htim1))
+			Error_Handler();
+	
+	counter=htim1.Instance->CNT;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -353,7 +326,8 @@ int main(void)
   {
 		  
 		   counter = __HAL_TIM_GET_COUNTER(&htim1);
-	     
+	     //Measured_COMM_PWM_Counts=3000;
+		
 		if(SampleADC == true)
       {
           // Trigger ADC Sampling
@@ -373,7 +347,6 @@ int main(void)
               
           if (Desired_PWM_DutyCycle < MIN_PWM_DUTYCYCLE)    // if < Min DutyCycle %age - latch to min value, 1023           
               Desired_PWM_DutyCycle = MIN_PWM_DUTYCYCLE;       
-
           // Apply Kp, Ki values depending on desired dutycycle
           if (Desired_PWM_DutyCycle < LOW_KP_KI_DUTYCYCLE)  // Dutycycle threshold which requires different Kp/Ki values
           {
@@ -382,6 +355,7 @@ int main(void)
           }
           else
           {
+						
               Kp = 4000;
               Ki = 1;
           }
@@ -447,7 +421,8 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -460,7 +435,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -479,7 +454,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Enables the Clock Security System 
+  /** Enables the Clock Security System
   */
   HAL_RCC_EnableCSS();
 }
@@ -502,7 +477,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 1 */
 
   /* USER CODE END ADC1_Init 1 */
-  /** Common config 
+  /** Common config
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -515,7 +490,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
-  /** Configure Analog WatchDog 1 
+  /** Configure Analog WatchDog 1
   */
   AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
   AnalogWDGConfig.HighThreshold = 0;
@@ -526,7 +501,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
-  /** Configure Regular Channel 
+  /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_6;
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -564,7 +539,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 0;
+  htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -647,9 +622,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 10;
+  htim3.Init.Prescaler = 17;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1800;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -777,7 +752,7 @@ error = true ;
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
