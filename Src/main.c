@@ -46,6 +46,7 @@ ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 #ifdef DIRECTION_CW
@@ -61,15 +62,6 @@ uint16_t Hall_DIR_sequence[] = {  0x00,
 #endif
 
 #ifdef DIRECTION_CCW                                        
-  // Direction = 0x01 
-uint16_t Hall_DIR_sequence[] = { 0x00,            
-                                      HS_W|LS_V,       // Hall position 001
-                                      HS_V|LS_U,       // Hall position 010
-                                      HS_W|LS_U,       // Hall position 011
-                                      HS_U|LS_W,       // Hall position 100
-                                      HS_U|LS_V,       // Hall position 101
-                                      HS_V|LS_W,       // Hall position 110
-                                        0x00   };
 #endif
 
 
@@ -109,6 +101,7 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 void PWM_update (unsigned char Next_Hall_Sequence);
@@ -159,10 +152,7 @@ void Start_Motor(void)
     // Read Hall inputs
     Hall_IN = 0;
     Hall_IN = ((GPIOB->IDR)&0xF000)>>13;
-
-    // Start PWM Timer1
-    PreDriver_Sequence = Hall_DIR_sequence[Hall_IN];
-    PWM_update(PreDriver_Sequence);
+    PWM_update(Hall_IN);
     Motor_Status = Running;
 }
 
@@ -175,6 +165,7 @@ void Stop_Motor(void)
 void PWM_update (unsigned char Hall_IN)
 {
   //Hall_U=> PB.15; Hall_V=> PB.14; Hall_W=> PB.13
+	/*Stop All Signals*/
 	  HAL_TIM_PWM_Stop(&htim1,HU);
 		HAL_TIM_PWM_Stop(&htim1,HV);
 		HAL_TIM_PWM_Stop(&htim1,HW);
@@ -182,36 +173,37 @@ void PWM_update (unsigned char Hall_IN)
 		HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_RESET);
 	
+	/*Commutate to next sequence*/
       switch(Hall_IN)
       {
-      case 1:             
+      case 1:		// Hall position 001             
         HAL_TIM_PWM_Start(&htim1,HW);
 		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);
          
         break;
         
-      case 2:          
+      case 2:		// Hall position 001          
         HAL_TIM_PWM_Start(&htim1,HV);
 		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET); 
             
         break;
     
-      case 3:            
+      case 3:		// Hall position 001            
         HAL_TIM_PWM_Start(&htim1,HW);
 		    HAL_GPIO_WritePin(GPIOA,LW,GPIO_PIN_SET);
         break;
     
-      case 4:            
+      case 4:		// Hall position 001            
         HAL_TIM_PWM_Start(&htim1,HU);
 		    HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_SET);      
         break;
     
-      case 5:            
+      case 5:		// Hall position 001            
         HAL_TIM_PWM_Start(&htim1,HU);
 		    HAL_GPIO_WritePin(GPIOA,LU,GPIO_PIN_SET);
         break;
     
-      case 6:            
+      case 6:		// Hall position 001           
         HAL_TIM_PWM_Start(&htim1,HV);
 		    HAL_GPIO_WritePin(GPIOA,LV,GPIO_PIN_SET);
         break;
@@ -230,6 +222,7 @@ void PWM_update (unsigned char Hall_IN)
 
 void Start_ADC_Conversion(void)
 {
+	/*Initiate ADC conversion after clearing the buffer*/
    ADC_Results[0] = 0x0;
    ADC_Results[1] = 0x0;
 	 if(HAL_OK != HAL_ADC_Start_IT(&hadc1))
@@ -277,6 +270,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	
 
@@ -304,8 +298,12 @@ int main(void)
 	
 	while(HAL_GetTick()<4000)
 	{
-		;
+		/*Waiting period before turn on*/;
 	}
+	
+	/*Turn on Gate Driver*/;
+	HAL_GPIO_WritePin(GPIOC,GDEN_Pin,GPIO_PIN_SET);
+	
 	/* Start Low Side PWM*/
 	HAL_TIM_PWM_Start(&htim1,LS);
 	
@@ -317,7 +315,7 @@ int main(void)
 	if(HAL_OK != HAL_TIM_Base_Start_IT(&htim1))
 			Error_Handler();
 	
-	counter=htim1.Instance->CNT;
+	//counter=htim1.Instance->CNT;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -649,6 +647,51 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 71;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -664,13 +707,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GDEN_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC13 PC14 PC15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
+  /*Configure GPIO pins : PC13 GDEN_Pin PC15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GDEN_Pin|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -683,6 +726,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ITRIP_Pin */
+  GPIO_InitStruct.Pin = ITRIP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ITRIP_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PB12 PB13 PB14 PB15 */
   GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
@@ -690,12 +739,40 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	HAL_TIM_Base_Start(&htim4);
+	
+	htim1.Instance->CCR1 = 0;
+	htim1.Instance->CCR2 = 0;
+	htim1.Instance->CCR3 = 0;
+	htim1.Instance->CCR4 = 0;
+	
+	while(HAL_GPIO_ReadPin(GPIOA,ITRIP_Pin))
+	{
+		if(__HAL_TIM_GET_COUNTER(&htim4)>300)
+		{
+		while(1);
+		}
+		}
+	HAL_TIM_Base_Stop(&htim4);
+	__HAL_TIM_SET_COUNTER(&htim4,0);
+		
+	//while (__HAL_TIM_GET_FLAG()!=SET);	error
+	htim1.Instance->CCR1 = PID_Applied_PWM_DutyCycle;
+	htim1.Instance->CCR2 = PID_Applied_PWM_DutyCycle;
+	htim1.Instance->CCR3 = PID_Applied_PWM_DutyCycle;
+	htim1.Instance->CCR4 = PID_Applied_PWM_DutyCycle;
+}
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	// heart beat signal = PWM period

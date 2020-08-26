@@ -208,6 +208,20 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line4 interrupt.
+  */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
+
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+
+  /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
   * @brief This function handles ADC1 and ADC2 global interrupts.
   */
 void ADC1_2_IRQHandler(void)
@@ -250,8 +264,8 @@ void EXTI15_10_IRQHandler(void)
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 	HAL_TIM_Base_Stop(&htim3);                                     //stop counter
 	
-  Measured_COMM_PWM_Counts = (Measured_COMM_PWM_Counts + __HAL_TIM_GET_COUNTER(&htim3))>>1;       
-  frequency = (2000000/Measured_COMM_PWM_Counts) ;                                                              // Accumulate and avg measured PWM counts per commutation cycle with prev value
+  Measured_COMM_PWM_Counts = (Measured_COMM_PWM_Counts + __HAL_TIM_GET_COUNTER(&htim3))>>1;		// Accumulate and avg measured PWM counts per commutation cycle with prev value       
+  frequency = (2000000/Measured_COMM_PWM_Counts) ;                                                              
 	__HAL_TIM_SET_COUNTER(&htim3,0);                              //clear counter
 	HAL_TIM_Base_Start(&htim3);                                   //restart counter
 	

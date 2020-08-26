@@ -62,6 +62,11 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define KP 500
 #define KI 500
+#define GDEN_Pin GPIO_PIN_14
+#define GDEN_GPIO_Port GPIOC
+#define ITRIP_Pin GPIO_PIN_4
+#define ITRIP_GPIO_Port GPIOA
+#define ITRIP_EXTI_IRQn EXTI4_IRQn
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
