@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name XL6009)(type Legacy)(uri C:/Users/Rahul/Documents/Kicad/PCB/XL6009.lib)(options "")(descr ""))
+  (lib (name BLDC_STM32_proto_1-rescue)(type Legacy)(uri ${KIPRJMOD}/BLDC_STM32_proto_1-rescue.lib)(options "")(descr ""))
+)

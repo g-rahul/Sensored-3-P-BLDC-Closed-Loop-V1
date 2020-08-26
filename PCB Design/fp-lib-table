@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name BLDC_STM32)(type KiCad)(uri ${KIPRJMOD}/BLDC_STM32.pretty)(options "")(descr ""))
+  (lib (name PCB)(type KiCad)(uri C:/Users/Rahul/Documents/Kicad/PCB.pretty)(options "")(descr ""))
+)
